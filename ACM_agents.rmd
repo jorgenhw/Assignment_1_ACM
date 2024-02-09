@@ -74,20 +74,18 @@ MemoryDecayAgentWeight_f <- function(prevChoices, Feedback, decay, tiredness) {
 set.seed(1984)
 trials <- 120
 
-# Initialize vectors to store choices
+# vectors to store choices
 self_tired_WSLS <- rep(NA, trials)
 other_decay <- rep(NA, trials)
 self_feedback <- rep(NA, trials)
 other_feedback <- rep(NA, trials)
 
-# RandomAgent_f was defined but not needed if initialized randomly
-
-# Initialize the first choice randomly for both agents
+# Initfirst choice randomly for both agents
 self_tired_WSLS[1] <- sample(c(0, 1), 1)
 other_decay_choices <- sample(c(0, 1), 1)
 other_decay[1] <- other_decay_choices
 
-# Simulate interactions between Tired Win-Stay-Lose-Shift Agent and Memory Decay Agent
+# Simulating interactions between Tired Win-Stay-Lose-Shift Agent and Memory Decay Agent
 for (i in 2:trials) {
   if (i == 2) {
     # First feedback is random for the first interaction
@@ -99,23 +97,22 @@ for (i in 2:trials) {
     Feedback_decay <- 1 - Feedback_tired_WSLS
   }
 
-  # Store feedback
+  # Storing tje feedback
   self_feedback[i - 1] <- Feedback_tired_WSLS
   other_feedback[i - 1] <- Feedback_decay
   
-  # Make choices for the next trial
+  # Making choices for the next trial
   self_tired_WSLS[i] <- WSLSAgentNoise_f(self_tired_WSLS[i - 1], Feedback_tired_WSLS, 0.2)
   
-  # For the Memory Decay agent, we need to pass the cumulative vector rather than just the last feedback
+  # For the Memory Decay agent, we are passing the cumulative vector rather than just the last feedback
   other_decay_decision <- MemoryDecayAgentWeight_f(other_decay_choices, other_feedback[1:(i-1)], 0.1, 0.1)
   other_decay_choices <- other_decay_decision$memory
   other_decay[i] <- other_decay_decision$choice
 }
 
-# Create a data frame for visualization
-pacman::p_load(tibble, ggplot2)
+# Creating a data frame for visualization
+pacman::p_load(tidyverse)
 
-# Create a data frame for visualization
 df2 <- tibble(
   trial = seq(trials),
   self_tired_WSLS = self_tired_WSLS,
@@ -123,7 +120,7 @@ df2 <- tibble(
   Feedback_tired_WSLS = self_feedback
 )
 
-# Visualize the results
+# Visualizing the results
 pl1 <- ggplot(df2, aes(trial)) +
   geom_line(aes(y = self_tired_WSLS, color = "Tired WSLS Agent"), size = 1) +
   geom_line(aes(y = other_decay, color = "Memory Decay Agent"), size = 1) +
@@ -144,9 +141,9 @@ pl2 <- ggplot(df2, aes(trial)) +
   scale_color_manual(name = "Agents", values = c("Tired WSLS Agent" = "red", "Memory Decay Agent" = "blue")) +
   theme_classic()
 
-# Display the plots together
+# Displaying the plots together
 final_plt <- gridExtra::grid.arrange(pl1, pl2, ncol = 1)
 
-# save the plot
+# save the plot to drive
 ggsave("MP_agents.png", final_plt, width = 10, height = 10, units = "in")
 ```
