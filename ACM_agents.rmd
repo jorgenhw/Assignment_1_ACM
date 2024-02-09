@@ -31,127 +31,122 @@ WSLSAgentNoise_f <- function(prevChoice, Feedback, noise){
   
   return(choice)
 }
-
-# Random agent function
-RandomAgent_f <- function(rate) {
-  return(rbinom(1, 1, rate))
-}
-
-# Simulating our WSLS agent againt the random agent
-run_trials <- function(trials, noise, rate) {
-  Self <- rep(NA, trials)
-  Other <- rep(NA, trials)
-  
-  # Initialize the first trial
-  Self[1] <- RandomAgent_f(rate)
-  Other[1] <- RandomAgent_f(rate)
-  
-  # Run the simulation for the rest of the trials
-  for (i in 2:trials) {
-    # Determine Feedback based on the last outcome
-    Feedback <- as.integer(Self[i - 1] == Other[i - 1])
-    
-    # Update the WSLS agent's choice based on Feedback
-    Self[i] <- WSLSAgentNoise_f(Self[i - 1], Feedback, noise)
-    
-    # Determine the other agent's choice randomly
-    Other[i] <- RandomAgent_f(rate)
-  }
-  
-  # Return the choices of both agents
-  return(list(Self = Self, Other = Other))
-}
-
-# example usage
-set.seed(1)
-trials <- 100
-noise <- 0.1
-rate <- 0.5
-result <- run_trials(trials, noise, rate)
-result$Self
-result$Other
 ```
 
-```{r}
-```
+## Exponential Decay Agent
+An agent that will decay its memory of previous choices over time.
+It should also keep track of what choices are related to success using some weight parameter and make a choice in a given trial based on the highest weight. 
 
-```{r}
-```
+Moreover, it has a 10% chance of choosing randomly, reflecting tiredness. 
 
+```{r alternative memory decay agent that uses weights}
+MemoryDecayAgentWeight_f <- function(prevChoices, Feedback, decay, tiredness) {
+  n <- length(prevChoices)
 
-
-
-```{r}
-
-# function that simulates a single round of the MP game with memory-based strategy
-# remembers 
-
-matching_pennies_memory <- function(trials, prob_A_heads) {
-  # number of trials 
-  num_trials <- length(trials)
-  
-  # Check if there are enough trials to calculate weighted mean
-  if (num_trials >= 7) {
-    last_7_trials <- trials[max(1, num_trials - 6):num_trials]
-    
-    # Calculate weighted mean of outcomes
-    weighted_mean <- sum((1:7) * last_7_trials) / sum(1:7)
-    
-    # Decision based on weighted mean
-    outcome_A <- ifelse(weighted_mean > 0.5, "heads", "tails")
+  if (rbinom(1, 1, tiredness) == 1) {
+    choice <- rbinom(1, 1, 0.5) # if tired, choose randomly
   } else {
-    # If there are not enough trials, make a random decision
-    outcome_A <- ifelse(runif(1) < prob_A_heads, "heads", "tails")
+    decay_factor <- exp(-decay)
+    prevChoices <- decay_factor * prevChoices
+
+    # Calculate the exponentially decaying weights for each feedback
+    weights <- exp(-decay * (1:n)) # small values for small values of n
+    
+    # Calculate the weighted proportion of positive feedbacks
+    weighted_proportions <- cumsum(Feedback * weights) / cumsum(weights)
+    
+    # Choose the option with the highest weighted proportion
+    choice <- ifelse(weighted_proportions[n] > 0.5, 1, 0)
+
+    prevChoices <- c(prevChoices, choice)
   }
-  
-  # Player B's decision (random)
-  outcome_B <- ifelse(runif(1) < 0.5, "heads", "tails")
-  
-  # Determine the winner
-  if (outcome_A == outcome_B) {
-    winner <- "A"
+
+  # Return the updated choice and memory state
+  return(list(choice = choice, memory = prevChoices))
+}
+
+```
+
+
+
+## Tired WSLS and memory decay agent
+```{r}
+set.seed(1984)
+trials <- 120
+
+# Initialize vectors to store choices
+self_tired_WSLS <- rep(NA, trials)
+other_decay <- rep(NA, trials)
+self_feedback <- rep(NA, trials)
+other_feedback <- rep(NA, trials)
+
+# RandomAgent_f was defined but not needed if initialized randomly
+
+# Initialize the first choice randomly for both agents
+self_tired_WSLS[1] <- sample(c(0, 1), 1)
+other_decay_choices <- sample(c(0, 1), 1)
+other_decay[1] <- other_decay_choices
+
+# Simulate interactions between Tired Win-Stay-Lose-Shift Agent and Memory Decay Agent
+for (i in 2:trials) {
+  if (i == 2) {
+    # First feedback is random for the first interaction
+    Feedback_tired_WSLS <- sample(c(0, 1), 1)
+    Feedback_decay <- 1 - Feedback_tired_WSLS
   } else {
-    winner <- "B"
+    # Get feedback based on previous choices
+    Feedback_tired_WSLS <- as.numeric(self_tired_WSLS[i - 1] == other_decay[i - 1])
+    Feedback_decay <- 1 - Feedback_tired_WSLS
   }
+
+  # Store feedback
+  self_feedback[i - 1] <- Feedback_tired_WSLS
+  other_feedback[i - 1] <- Feedback_decay
   
-  return(list(outcome_A = outcome_A, winner = winner))
+  # Make choices for the next trial
+  self_tired_WSLS[i] <- WSLSAgentNoise_f(self_tired_WSLS[i - 1], Feedback_tired_WSLS, 0.2)
+  
+  # For the Memory Decay agent, we need to pass the cumulative vector rather than just the last feedback
+  other_decay_decision <- MemoryDecayAgentWeight_f(other_decay_choices, other_feedback[1:(i-1)], 0.1, 0.1)
+  other_decay_choices <- other_decay_decision$memory
+  other_decay[i] <- other_decay_decision$choice
 }
 
+# Create a data frame for visualization
+pacman::p_load(tibble, ggplot2)
 
+# Create a data frame for visualization
+df2 <- tibble(
+  trial = seq(trials),
+  self_tired_WSLS = self_tired_WSLS,
+  other_decay = other_decay,
+  Feedback_tired_WSLS = self_feedback
+)
+
+# Visualize the results
+pl1 <- ggplot(df2, aes(trial)) +
+  geom_line(aes(y = self_tired_WSLS, color = "Tired WSLS Agent"), size = 1) +
+  geom_line(aes(y = other_decay, color = "Memory Decay Agent"), size = 1) +
+  labs(title = "Tired WSLS Agent vs. Memory Decay Agent",
+       y = "Choice", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Tired WSLS Agent" = "red", "Memory Decay Agent" = "blue")) +
+  theme_classic()
+
+# Calculate and plot the cumulative win rate for each agent
+df2$cumulativeWinRateSelf <- cumsum(df2$Feedback_tired_WSLS) / seq_along(df2$Feedback_tired_WSLS)
+df2$cumulativeWinRateOther <- (seq_along(df2$Feedback_tired_WSLS) - cumsum(df2$Feedback_tired_WSLS)) / seq_along(df2$Feedback_tired_WSLS)
+
+pl2 <- ggplot(df2, aes(trial)) +
+  geom_line(aes(y = cumulativeWinRateSelf, color = "Tired WSLS Agent"), size = 1) +
+  geom_line(aes(y = cumulativeWinRateOther, color = "Memory Decay Agent"), size = 1) +
+  labs(title = "Cumulative Win Rate of Tired WSLS Agent vs. Memory Decay Agent",
+       y = "Cumulative Win Rate", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Tired WSLS Agent" = "red", "Memory Decay Agent" = "blue")) +
+  theme_classic()
+
+# Display the plots together
+final_plt <- gridExtra::grid.arrange(pl1, pl2, ncol = 1)
+
+# save the plot
+ggsave("MP_agents.png", final_plt, width = 10, height = 10, units = "in")
 ```
-
-```{r}
-# function to simulate multiple rounds of the MP game with memory-based strategy
-simulate_matching_pennies_memory <- function(num_rounds, prob_A_heads) {
-  wins_A <- 0
-  wins_B <- 0
-  trials <- numeric(0)
-  
-  for (i in 1:num_rounds) {
-    result <- matching_pennies_memory(trials, prob_A_heads)
-    if (result$winner == "A") {
-      wins_A <- wins_A + 1
-    } else {
-      wins_B <- wins_B + 1
-    }
-    # Store outcome of current round
-    if (result$outcome_A == "heads") {
-      trials <- c(trials, 1)
-    } else {
-      trials <- c(trials, 0)
-    }
-  }
-  
-  return(list(wins_A = wins_A, wins_B = wins_B))
-}
-
-```
-
-
-```{r}
-# Example: Simulate 1000 rounds with memory-based strategy where the player considers the last 7 trials
-result_memory <- simulate_matching_pennies_memory(1000, 0.5)
-cat("Player A wins:", result_memory$wins_A, "\n")
-cat("Player B wins:", result_memory$wins_B, "\n")
-```
-
