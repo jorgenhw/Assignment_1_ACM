@@ -13,7 +13,74 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This markdown contains the code for the simulation two different strategies of the matching pennies game. The game is a simple two-player game where each player has to choose between two options (right or left). The winner is determined by whether the choices match or not.
 
-# Strategy 1: Random Choice
+## Strategy 1: Tired Win-Stay-Lose-Shift Agent
+```{r}
+# WSLS Agent function with noise (tiredness)
+WSLSAgentNoise_f <- function(prevChoice, Feedback, noise){
+  # Win-Stay-Lose-Shift Strategy
+  if (Feedback == 1) {
+    choice <- prevChoice
+  } else if (Feedback == 0) {
+    choice <- 1 - prevChoice
+  }
+  
+  # Applying noise (tiredness)
+  if (rbinom(1, 1, noise) == 1) {
+    choice <- rbinom(1, 1, 0.5)
+  }
+  
+  return(choice)
+}
+
+# Random agent function
+RandomAgent_f <- function(rate) {
+  return(rbinom(1, 1, rate))
+}
+
+# Simulating our WSLS agent againt the random agent
+run_trials <- function(trials, noise, rate) {
+  Self <- rep(NA, trials)
+  Other <- rep(NA, trials)
+  
+  # Initialize the first trial
+  Self[1] <- RandomAgent_f(rate)
+  Other[1] <- RandomAgent_f(rate)
+  
+  # Run the simulation for the rest of the trials
+  for (i in 2:trials) {
+    # Determine Feedback based on the last outcome
+    Feedback <- as.integer(Self[i - 1] == Other[i - 1])
+    
+    # Update the WSLS agent's choice based on Feedback
+    Self[i] <- WSLSAgentNoise_f(Self[i - 1], Feedback, noise)
+    
+    # Determine the other agent's choice randomly
+    Other[i] <- RandomAgent_f(rate)
+  }
+  
+  # Return the choices of both agents
+  return(list(Self = Self, Other = Other))
+}
+
+# example usage
+set.seed(1)
+trials <- 100
+noise <- 0.1
+rate <- 0.5
+result <- run_trials(trials, noise, rate)
+result$Self
+result$Other
+```
+
+```{r}
+```
+
+```{r}
+```
+
+
+
+
 ```{r}
 
 # function that simulates a single round of the MP game with memory-based strategy

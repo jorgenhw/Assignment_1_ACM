@@ -8,7 +8,7 @@
 
 
   <p align="center">
-    Emma Olsen, Nanna Stenholdt, & Jørgen Højlund Wibe
+    Emma Risgaard Olsen <br> Nanna Marie Steenholdt <br> Jørgen Højlund Wibe
   </p>
 </p>
 
