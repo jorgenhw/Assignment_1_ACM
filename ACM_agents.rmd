@@ -1,0 +1,90 @@
+---
+title: "MP_agents"
+author: "EOL"
+date: "2024-02-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Mathcing Pennies Game
+
+This markdown contains the code for the simulation two different strategies of the matching pennies game. The game is a simple two-player game where each player has to choose between two options (right or left). The winner is determined by whether the choices match or not.
+
+# Strategy 1: Random Choice
+```{r}
+
+# function that simulates a single round of the MP game with memory-based strategy
+# remembers 
+
+matching_pennies_memory <- function(trials, prob_A_heads) {
+  # number of trials 
+  num_trials <- length(trials)
+  
+  # Check if there are enough trials to calculate weighted mean
+  if (num_trials >= 7) {
+    last_7_trials <- trials[max(1, num_trials - 6):num_trials]
+    
+    # Calculate weighted mean of outcomes
+    weighted_mean <- sum((1:7) * last_7_trials) / sum(1:7)
+    
+    # Decision based on weighted mean
+    outcome_A <- ifelse(weighted_mean > 0.5, "heads", "tails")
+  } else {
+    # If there are not enough trials, make a random decision
+    outcome_A <- ifelse(runif(1) < prob_A_heads, "heads", "tails")
+  }
+  
+  # Player B's decision (random)
+  outcome_B <- ifelse(runif(1) < 0.5, "heads", "tails")
+  
+  # Determine the winner
+  if (outcome_A == outcome_B) {
+    winner <- "A"
+  } else {
+    winner <- "B"
+  }
+  
+  return(list(outcome_A = outcome_A, winner = winner))
+}
+
+
+```
+
+```{r}
+# function to simulate multiple rounds of the MP game with memory-based strategy
+simulate_matching_pennies_memory <- function(num_rounds, prob_A_heads) {
+  wins_A <- 0
+  wins_B <- 0
+  trials <- numeric(0)
+  
+  for (i in 1:num_rounds) {
+    result <- matching_pennies_memory(trials, prob_A_heads)
+    if (result$winner == "A") {
+      wins_A <- wins_A + 1
+    } else {
+      wins_B <- wins_B + 1
+    }
+    # Store outcome of current round
+    if (result$outcome_A == "heads") {
+      trials <- c(trials, 1)
+    } else {
+      trials <- c(trials, 0)
+    }
+  }
+  
+  return(list(wins_A = wins_A, wins_B = wins_B))
+}
+
+```
+
+
+```{r}
+# Example: Simulate 1000 rounds with memory-based strategy where the player considers the last 7 trials
+result_memory <- simulate_matching_pennies_memory(1000, 0.5)
+cat("Player A wins:", result_memory$wins_A, "\n")
+cat("Player B wins:", result_memory$wins_B, "\n")
+```
+
