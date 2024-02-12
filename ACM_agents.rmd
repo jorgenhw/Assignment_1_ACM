@@ -75,7 +75,7 @@ MemoryDecayAgentWeight_f <- function(prevChoices, Feedback, decay, noise) {
 ```
 
 
-## noise WSLS and memory decay agent 
+## Simulate a game between the noisy WSLS agent and memory decay agent 
 ```{r}
 
 set.seed(1984)
@@ -156,3 +156,164 @@ final_plt <- gridExtra::grid.arrange(pl1, pl2, ncol = 1)
 # save the plot to drive
 ggsave("MP_agents.png", final_plt, width = 10, height = 10, units = "in")
 ```
+
+
+## Comparing each of the strategies to a random agent as baseline
+
+```{r}
+RandomAgent_f <- function(input, rate){
+  n <- length(input)
+  choice <- rbinom(n, 1, rate)
+  return(choice)
+}
+```
+
+```{r random vs WSLS}
+
+# simulate a game between the noisy WSLS agent and the random agent
+set.seed(1984)
+trials <- 120
+
+# vectors to store choices
+self_noise_WSLS <- rep(NA, trials)
+other_random <- rep(NA, trials)
+
+self_feedback <- rep(NA, trials)
+other_feedback <- rep(NA, trials)
+
+# initialising the first choices randomly 
+self_noise_WSLS[1] <- rbinom(1,1,0.5)
+other_random_choices <- RandomAgent_f(1, 0.5)  # starting with a random choice for the random agent
+other_random[1] <- other_random_choices
+
+# simulating interactions between noisy Win-Stay-Lose-Shift Agent and Random Agent
+for (i in 2:trials) {
+  # get feedback based on previous choices
+  Feedback_noise_WSLS <- as.numeric(self_noise_WSLS[i - 1] == other_random[i - 1])
+  Feedback_random <- 1 - Feedback_noise_WSLS
+
+  # storing feedback
+  self_feedback[i - 1] <- Feedback_noise_WSLS
+  other_feedback[i - 1] <- Feedback_random
+  
+  # making choices for the next trial
+  self_noise_WSLS[i] <- WSLSAgentNoise_f(self_noise_WSLS[i - 1], Feedback_noise_WSLS, 0.2)
+  other_random_choices <- RandomAgent_f(other_random_choices, 0.5)
+  other_random[i] <- other_random_choices
+}
+
+# creating a data frame for visualization
+df_random_vs_WSLS <- tibble(
+  trial = seq(trials),
+  self_noise_WSLS = self_noise_WSLS,
+  other_random = other_random,
+  Feedback_noise_WSLS = self_feedback
+)
+
+# visualizing the results
+pl_random_vs_WSLS <- ggplot(df_random_vs_WSLS, aes(trial)) +
+  geom_line(aes(y = self_noise_WSLS, color = "Noisy WSLS Agent"), size = 1) +
+  geom_line(aes(y = other_random, color = "Random Agent"), size = 1) +
+  labs(title = "Noisy WSLS Agent vs. Random Agent",
+       y = "Choice", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Noisy WSLS Agent" = "red", "Random Agent" = "blue")) +
+  theme_classic()
+
+# calculate and plot the cumulative win rate for each agent
+df_random_vs_WSLS$cumulativeWinRateSelf <- cumsum(df_random_vs_WSLS$Feedback_noise_WSLS) / seq_along(df_random_vs_WSLS$Feedback_noise_WSLS)
+df_random_vs_WSLS$cumulativeWinRateOther <- (seq_along(df_random_vs_WSLS$Feedback_noise_WSLS) - cumsum(df_random_vs_WSLS$Feedback_noise_WSLS)) / seq_along(df_random_vs_WSLS$Feedback_noise_WSLS)
+
+pl2_random_vs_WSLS <- ggplot(df_random_vs_WSLS, aes(trial)) +
+  geom_line(aes(y = cumulativeWinRateSelf, color = "Noisy WSLS Agent"), size = 1) +
+  geom_line(aes(y = cumulativeWinRateOther, color = "Random Agent"), size = 1) +
+  labs(title = "Cumulative Win Rate of Noisy WSLS Agent vs. Random Agent",
+       y = "Cumulative Win Rate", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Noisy WSLS Agent" = "red", "Random Agent" = "blue")) +
+  theme_classic()
+
+# displaying the plots together
+final_plt_random_vs_WSLS <- gridExtra::grid.arrange(pl_random_vs_WSLS, pl2_random_vs_WSLS, ncol = 1)
+
+# save the plot 
+ggsave("Noisy_WSLS_vs_Random.png", final_plt_random_vs_WSLS, width = 10, height = 10, units = "in")
+
+```
+```{r random vs memory decay agent}
+
+# Simulate a game between the Memory Decay agent and the random agent
+set.seed(1984)
+trials <- 120
+
+# vectors to store choices
+self_memory_decay <- rep(NA, trials)
+other_random <- rep(NA, trials)
+
+self_feedback <- rep(NA, trials)
+other_feedback <- rep(NA, trials)
+
+# initialising the first choices randomly 
+self_memory_decay[1] <- rbinom(1, 1, 0.5)
+other_random_choices <- RandomAgent_f(1, 0.5)  # Starting with a random choice for the random agent
+other_random[1] <- other_random_choices
+
+# Simulating interactions between Memory Decay Agent and Random Agent
+for (i in 2:trials) {
+  # Get feedback based on previous choices
+  Feedback_memory_decay <- as.numeric(self_memory_decay[i - 1] == other_random[i - 1])
+  Feedback_random <- 1 - Feedback_memory_decay
+
+  # Storing feedback
+  self_feedback[i - 1] <- Feedback_memory_decay
+  other_feedback[i - 1] <- Feedback_random
+  
+  # Making choices for the next trial
+  memory_decay_decision <- MemoryDecayAgentWeight_f(self_memory_decay, other_feedback[1:(i-1)], 0.1, 0.1)
+  self_memory_decay[i] <- memory_decay_decision$choice
+  other_random_choices <- RandomAgent_f(other_random_choices, 0.5)
+  other_random[i] <- other_random_choices
+}
+
+# Creating a data frame for visualization
+df_memory_decay_vs_random <- tibble(
+  trial = seq(trials),
+  self_memory_decay = self_memory_decay,
+  other_random = other_random,
+  Feedback_memory_decay = self_feedback
+)
+
+# Visualizing the results
+pl_memory_decay_vs_random <- ggplot(df_memory_decay_vs_random, aes(trial)) +
+  geom_line(aes(y = self_memory_decay, color = "Memory Decay Agent"), size = 1) +
+  geom_line(aes(y = other_random, color = "Random Agent"), size = 1) +
+  labs(title = "Memory Decay Agent vs. Random Agent",
+       y = "Choice", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Memory Decay Agent" = "blue", "Random Agent" = "green")) +
+  theme_classic()
+
+# Calculate and plot the cumulative win rate for each agent
+df_memory_decay_vs_random$cumulativeWinRateSelf <- cumsum(df_memory_decay_vs_random$Feedback_memory_decay) / seq_along(df_memory_decay_vs_random$Feedback_memory_decay)
+df_memory_decay_vs_random$cumulativeWinRateOther <- (seq_along(df_memory_decay_vs_random$Feedback_memory_decay) - cumsum(df_memory_decay_vs_random$Feedback_memory_decay)) / seq_along(df_memory_decay_vs_random$Feedback_memory_decay)
+
+pl2_memory_decay_vs_random <- ggplot(df_memory_decay_vs_random, aes(trial)) +
+  geom_line(aes(y = cumulativeWinRateSelf, color = "Memory Decay Agent"), size = 1) +
+  geom_line(aes(y = cumulativeWinRateOther, color = "Random Agent"), size = 1) +
+  labs(title = "Cumulative Win Rate of Memory Decay Agent vs. Random Agent",
+       y = "Cumulative Win Rate", x = "Trial") +
+  scale_color_manual(name = "Agents", values = c("Memory Decay Agent" = "blue", "Random Agent" = "green")) +
+  theme_classic()
+
+# Displaying the plots together
+final_plt_memory_decay_vs_random <- gridExtra::grid.arrange(pl_memory_decay_vs_random, pl2_memory_decay_vs_random, ncol = 1)
+
+# save the plot to drive
+ggsave("Memory_Decay_vs_Random.png", final_plt_memory_decay_vs_random, width = 10, height = 10, units = "in")
+```
+
+```{r}
+baseline_plots <- gridExtra::grid.arrange(pl2_random_vs_WSLS, pl2_memory_decay_vs_random, ncol = 1)
+baseline_plots
+
+ggsave("baseline_plots.png", baseline_plots, width = 15, height = 10, units = "in")
+```
+
+
