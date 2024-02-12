@@ -154,7 +154,7 @@ pl2 <- ggplot(df2, aes(trial)) +
 final_plt <- gridExtra::grid.arrange(pl1, pl2, ncol = 1)
 
 # save the plot to drive
-ggsave("MP_agents.png", final_plt, width = 10, height = 10, units = "in")
+ggsave("figs/MP_agents.png", final_plt, width = 10, height = 10, units = "in")
 ```
 
 
@@ -235,9 +235,10 @@ pl2_random_vs_WSLS <- ggplot(df_random_vs_WSLS, aes(trial)) +
 final_plt_random_vs_WSLS <- gridExtra::grid.arrange(pl_random_vs_WSLS, pl2_random_vs_WSLS, ncol = 1)
 
 # save the plot 
-ggsave("Noisy_WSLS_vs_Random.png", final_plt_random_vs_WSLS, width = 10, height = 10, units = "in")
+ggsave("figs/Noisy_WSLS_vs_Random.png", final_plt_random_vs_WSLS, width = 10, height = 10, units = "in")
 
 ```
+
 ```{r random vs memory decay agent}
 
 # Simulate a game between the Memory Decay agent and the random agent
@@ -306,14 +307,14 @@ pl2_memory_decay_vs_random <- ggplot(df_memory_decay_vs_random, aes(trial)) +
 final_plt_memory_decay_vs_random <- gridExtra::grid.arrange(pl_memory_decay_vs_random, pl2_memory_decay_vs_random, ncol = 1)
 
 # save the plot to drive
-ggsave("Memory_Decay_vs_Random.png", final_plt_memory_decay_vs_random, width = 10, height = 10, units = "in")
+ggsave("figs/Memory_Decay_vs_Random.png", final_plt_memory_decay_vs_random, width = 10, height = 10, units = "in")
 ```
 
 ```{r}
 baseline_plots <- gridExtra::grid.arrange(pl2_random_vs_WSLS, pl2_memory_decay_vs_random, ncol = 1)
 baseline_plots
 
-ggsave("baseline_plots.png", baseline_plots, width = 15, height = 10, units = "in")
+ggsave("figs/baseline_plots.png", baseline_plots, width = 15, height = 10, units = "in")
 ```
 
 
